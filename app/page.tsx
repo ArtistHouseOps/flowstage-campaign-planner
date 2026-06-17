@@ -60,6 +60,20 @@ export default async function Home() {
             posts/day = 42 posts.
           </p>
         </div>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/campaigns"
+            className="rounded border border-zinc-300 px-3 py-1.5 text-sm font-medium dark:border-zinc-700"
+          >
+            Campaigns
+          </Link>
+          <Link
+            href="/campaigns/new"
+            className="rounded bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900"
+          >
+            New
+          </Link>
+        </div>
       </header>
 
       {envError ? <EnvErrorCard message={envError} /> : null}

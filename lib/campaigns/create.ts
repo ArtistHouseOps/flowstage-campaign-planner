@@ -4,35 +4,40 @@ import { renderCaption } from "./caption";
 import { saveCampaign, saveJobs } from "./storage";
 import type { Campaign, CampaignPostJob } from "./types";
 
-export const createCampaignSchema = z
+const snippetSchema = z
   .object({
-    name: z.string().min(1, "Campaign name is required"),
-
-    flowstageAccountId: z.string().min(1),
-    accountHandle: z.string().optional(),
-    platform: z.string().optional(),
-    timezone: z.string().optional(),
-
-    aestheticId: z.string().min(1),
     audioId: z.string().min(1),
     audioName: z.string().optional(),
+    sectionId: z.string().optional(),
     sectionName: z.string().optional(),
     sectionStartTime: z.number().nonnegative(),
     sectionEndTime: z.number().positive(),
-
-    presetName: z.string().optional(),
-    startDate: z.string().min(1),
-    durationDays: z.number().int().min(1).max(60).default(14),
-    postsPerDay: z.number().int().min(1).max(4).default(3),
-
-    hooks: z.array(z.string().min(1)).optional(),
-    captionTemplate: z.string().optional(),
-    hashtags: z.array(z.string()).optional(),
   })
-  .refine((d) => d.sectionEndTime > d.sectionStartTime, {
+  .refine((s) => s.sectionEndTime > s.sectionStartTime, {
     message: "sectionEndTime must be greater than sectionStartTime",
     path: ["sectionEndTime"],
   });
+
+export const createCampaignSchema = z.object({
+  name: z.string().min(1, "Campaign name is required"),
+
+  flowstageAccountId: z.string().min(1),
+  accountHandle: z.string().optional(),
+  platform: z.string().optional(),
+  timezone: z.string().optional(),
+
+  aestheticId: z.string().min(1),
+  snippets: z.array(snippetSchema).min(1, "Pick at least one snippet"),
+
+  presetName: z.string().optional(),
+  startDate: z.string().min(1),
+  durationDays: z.number().int().min(1).max(60).default(14),
+  postsPerDay: z.number().int().min(1).max(4).default(3),
+
+  hooks: z.array(z.string().min(1)).optional(),
+  captionTemplate: z.string().optional(),
+  hashtags: z.array(z.string()).optional(),
+});
 
 export type CreateCampaignInput = z.infer<typeof createCampaignSchema>;
 
@@ -54,6 +59,7 @@ function buildJobs(campaign: Campaign): CampaignPostJob[] {
   const hooks =
     campaign.hooks && campaign.hooks.length > 0 ? campaign.hooks : [""];
   const template = campaign.captionTemplate?.trim() || "{hook}";
+  const snippets = campaign.snippets;
 
   const startMs = Date.parse(campaign.startDate);
   const jobs: CampaignPostJob[] = [];
@@ -66,6 +72,7 @@ function buildJobs(campaign: Campaign): CampaignPostJob[] {
     const dateIso = date.toISOString();
     for (let p = 0; p < campaign.postsPerDay; p++) {
       const hook = hooks[idx % hooks.length];
+      const snip = snippets[idx % snippets.length];
       const caption = renderCaption(template, {
         hook,
         account: campaign.accountHandle ?? "",
@@ -78,9 +85,11 @@ function buildJobs(campaign: Campaign): CampaignPostJob[] {
 
         flowstageAccountId: campaign.flowstageAccountId,
         aestheticId: campaign.aestheticId,
-        audioId: campaign.audioId,
-        sectionStartTime: campaign.sectionStartTime,
-        sectionEndTime: campaign.sectionEndTime,
+        audioId: snip.audioId,
+        audioName: snip.audioName,
+        sectionName: snip.sectionName,
+        sectionStartTime: snip.sectionStartTime,
+        sectionEndTime: snip.sectionEndTime,
         presetName: campaign.presetName,
 
         targetDate: dateIso,
@@ -143,11 +152,7 @@ export async function createCampaignWithJobs(input: CreateCampaignInput) {
     timezone: input.timezone,
 
     aestheticId: input.aestheticId,
-    audioId: input.audioId,
-    audioName: input.audioName,
-    sectionName: input.sectionName,
-    sectionStartTime: input.sectionStartTime,
-    sectionEndTime: input.sectionEndTime,
+    snippets: input.snippets,
 
     presetName: input.presetName,
     startDate: input.startDate,

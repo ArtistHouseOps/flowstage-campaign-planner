@@ -10,14 +10,18 @@ import type {
   FlowstageSocialAccount,
 } from "@/lib/flowstage/types";
 
+type WizardSnippet = {
+  audioId: string;
+  audioName: string;
+  sectionId: string;
+  sectionName: string;
+  sectionStartTime: number;
+  sectionEndTime: number;
+};
+
 type WizardState = {
   accountId?: string;
-  audioId?: string;
-  audioName?: string;
-  sectionId?: string;
-  sectionName?: string;
-  sectionStartTime?: number;
-  sectionEndTime?: number;
+  snippets: WizardSnippet[];
 
   name: string;
   startDate: string;
@@ -36,6 +40,7 @@ function defaultStartDate() {
 }
 
 const initialState: WizardState = {
+  snippets: [],
   name: "",
   startDate: defaultStartDate(),
   durationDays: 14,
@@ -147,8 +152,7 @@ export default function NewCampaignPage() {
     .map((s) => `#${s}`);
 
   const canProceedFrom1 = Boolean(state.accountId && account?.bound_aesthetic_id);
-  const canProceedFrom2 =
-    Boolean(state.audioId && state.sectionId && state.sectionEndTime);
+  const canProceedFrom2 = state.snippets.length > 0;
   const canProceedFrom3 =
     state.name.trim().length > 0 &&
     state.durationDays >= 1 &&
@@ -171,11 +175,14 @@ export default function NewCampaignPage() {
           platform: account.platform,
           timezone: account.timezone,
           aestheticId: aesthetic.id,
-          audioId: state.audioId,
-          audioName: state.audioName,
-          sectionName: state.sectionName,
-          sectionStartTime: state.sectionStartTime,
-          sectionEndTime: state.sectionEndTime,
+          snippets: state.snippets.map((s) => ({
+            audioId: s.audioId,
+            audioName: s.audioName,
+            sectionId: s.sectionId,
+            sectionName: s.sectionName,
+            sectionStartTime: s.sectionStartTime,
+            sectionEndTime: s.sectionEndTime,
+          })),
           presetName: state.presetName || undefined,
           startDate: state.startDate,
           durationDays: state.durationDays,
@@ -221,8 +228,7 @@ export default function NewCampaignPage() {
             setState((s) => ({
               ...s,
               accountId: id,
-              audioId: undefined,
-              sectionId: undefined,
+              snippets: [],
             }))
           }
         />
@@ -232,17 +238,27 @@ export default function NewCampaignPage() {
         <Step2
           aesthetic={aesthetic}
           error={aestheticError}
-          selectedSectionId={state.sectionId}
-          onSelect={(audio, section) =>
-            setState((s) => ({
-              ...s,
-              audioId: audio.id,
-              audioName: audio.name,
-              sectionId: section.id,
-              sectionName: section.name,
-              sectionStartTime: section.start_time,
-              sectionEndTime: section.end_time,
-            }))
+          selectedSnippets={state.snippets}
+          onToggle={(audio, section) =>
+            setState((s) => {
+              const exists = s.snippets.some(
+                (sn) => sn.sectionId === section.id,
+              );
+              const next: WizardSnippet[] = exists
+                ? s.snippets.filter((sn) => sn.sectionId !== section.id)
+                : [
+                    ...s.snippets,
+                    {
+                      audioId: audio.id,
+                      audioName: audio.name,
+                      sectionId: section.id,
+                      sectionName: section.name,
+                      sectionStartTime: section.start_time,
+                      sectionEndTime: section.end_time,
+                    },
+                  ];
+              return { ...s, snippets: next };
+            })
           }
         />
       )}
@@ -404,13 +420,13 @@ function Step1({
 function Step2({
   aesthetic,
   error,
-  selectedSectionId,
-  onSelect,
+  selectedSnippets,
+  onToggle,
 }: {
   aesthetic: FlowstageAesthetic | null;
   error: string | null;
-  selectedSectionId?: string;
-  onSelect: (
+  selectedSnippets: WizardSnippet[];
+  onToggle: (
     audio: FlowstageAesthetic["audios"][number],
     section: FlowstageAesthetic["audios"][number]["sections"][number],
   ) => void;
@@ -430,12 +446,19 @@ function Step2({
       </p>
     );
 
+  const selectedIds = new Set(selectedSnippets.map((s) => s.sectionId));
+
   return (
     <div className="space-y-6">
-      <p className="text-sm text-zinc-500 dark:text-zinc-400">
-        Pick one section. Every job in the campaign uses this snippet so the
-        videos stay on-brand.
-      </p>
+      <div className="flex items-baseline justify-between">
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          Pick one or more sections. Jobs rotate through them round-robin so
+          videos stay varied.
+        </p>
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+          {selectedSnippets.length} selected
+        </p>
+      </div>
       {aesthetic.audios.map((audio) => (
         <div
           key={audio.id}
@@ -450,19 +473,31 @@ function Step2({
           </div>
           <ul>
             {audio.sections.map((s) => {
-              const selected = s.id === selectedSectionId;
+              const selected = selectedIds.has(s.id);
               return (
                 <li key={s.id}>
                   <button
                     type="button"
-                    onClick={() => onSelect(audio, s)}
-                    className={`flex w-full items-center justify-between border-t border-zinc-100 px-4 py-2 text-sm dark:border-zinc-800 ${
+                    onClick={() => onToggle(audio, s)}
+                    aria-pressed={selected}
+                    className={`flex w-full items-center justify-between gap-3 border-t border-zinc-100 px-4 py-2 text-sm dark:border-zinc-800 ${
                       selected
-                        ? "bg-zinc-50 dark:bg-zinc-900"
+                        ? "bg-emerald-50 dark:bg-emerald-950/30"
                         : "hover:bg-zinc-50 dark:hover:bg-zinc-900/50"
                     }`}
                   >
-                    <span>{s.name}</span>
+                    <span className="flex items-center gap-3">
+                      <span
+                        className={`inline-flex h-4 w-4 items-center justify-center rounded border ${
+                          selected
+                            ? "border-emerald-600 bg-emerald-600 text-white"
+                            : "border-zinc-300 dark:border-zinc-700"
+                        }`}
+                      >
+                        {selected ? "✓" : ""}
+                      </span>
+                      <span>{s.name}</span>
+                    </span>
                     <span className="text-xs text-zinc-500 dark:text-zinc-400">
                       {s.start_time.toFixed(2)}s → {s.end_time.toFixed(2)}s (
                       {(s.end_time - s.start_time).toFixed(2)}s)
@@ -640,10 +675,16 @@ function Step4({
   onLaunch: () => void;
 }) {
   const previewJobs = useMemo(() => {
-    const sample: { date: string; postNumber: number; caption: string }[] = [];
+    const sample: {
+      date: string;
+      postNumber: number;
+      caption: string;
+      snippetLabel: string;
+    }[] = [];
     const start = Date.parse(state.startDate);
     const template = state.captionTemplate.trim() || "{hook}";
     const hookList = hooks.length > 0 ? hooks : [""];
+    const snippetList = state.snippets;
     let idx = 0;
     const previewDays = Math.min(2, state.durationDays);
     for (let d = 0; d < previewDays; d++) {
@@ -651,6 +692,10 @@ function Step4({
       date.setUTCDate(date.getUTCDate() + d);
       for (let p = 0; p < state.postsPerDay; p++) {
         const hook = hookList[idx % hookList.length];
+        const snip = snippetList[idx % snippetList.length];
+        const snippetLabel = snip
+          ? `${snip.audioName} · ${snip.sectionName}`
+          : "(no snippet)";
         sample.push({
           date: date.toISOString().slice(0, 10),
           postNumber: p + 1,
@@ -660,6 +705,7 @@ function Step4({
             day: d + 1,
             postNumber: p + 1,
           }),
+          snippetLabel,
         });
         idx++;
       }
@@ -690,6 +736,19 @@ function Step4({
         <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
           Jobs are queued one at a time so videos stay distinct.
         </p>
+        <div className="mt-3 text-xs text-zinc-600 dark:text-zinc-300">
+          <div className="font-medium text-zinc-700 dark:text-zinc-200">
+            Snippet rotation ({state.snippets.length})
+          </div>
+          <ul className="mt-1 list-disc pl-5">
+            {state.snippets.map((s) => (
+              <li key={s.sectionId}>
+                {s.audioName} · {s.sectionName} (
+                {(s.sectionEndTime - s.sectionStartTime).toFixed(2)}s)
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
 
       <div className="rounded border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
@@ -738,7 +797,7 @@ function Step4({
               className="rounded border border-zinc-100 p-2 dark:border-zinc-800"
             >
               <div className="text-xs text-zinc-500 dark:text-zinc-400">
-                {j.date} · post #{j.postNumber}
+                {j.date} · post #{j.postNumber} · {j.snippetLabel}
               </div>
               <div className="mt-0.5 whitespace-pre-wrap font-mono text-xs">
                 {j.caption || "(empty caption)"}

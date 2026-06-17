@@ -17,6 +17,15 @@ export type CampaignJobStatus =
   | "FAILED"
   | "CANCELLED";
 
+export type CampaignSnippet = {
+  audioId: string;
+  audioName?: string;
+  sectionId?: string;
+  sectionName?: string;
+  sectionStartTime: number;
+  sectionEndTime: number;
+};
+
 export type Campaign = {
   id: string;
   name: string;
@@ -27,11 +36,7 @@ export type Campaign = {
   timezone?: string;
 
   aestheticId: string;
-  audioId: string;
-  audioName?: string;
-  sectionName?: string;
-  sectionStartTime: number;
-  sectionEndTime: number;
+  snippets: CampaignSnippet[];
 
   presetName?: string;
   startDate: string;
@@ -56,6 +61,8 @@ export type CampaignPostJob = {
   flowstageAccountId: string;
   aestheticId: string;
   audioId: string;
+  audioName?: string;
+  sectionName?: string;
   sectionStartTime: number;
   sectionEndTime: number;
   presetName?: string;

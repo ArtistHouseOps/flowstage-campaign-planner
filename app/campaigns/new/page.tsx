@@ -683,8 +683,8 @@ function Step4({
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
           Will create{" "}
           <span className="font-medium">{totalPosts} video edits</span> and{" "}
-          <span className="font-medium">{totalPosts} scheduled posts</span> for
-          campaign &quot;{state.name}&quot; over {state.durationDays} days
+          <span className="font-medium">{totalPosts} scheduled posts</span>{" "}
+          for campaign &quot;{state.name}&quot; over {state.durationDays} days
           starting {state.startDate}, {state.postsPerDay}/day.
         </p>
         <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">

@@ -47,7 +47,7 @@ const initialState: WizardState = {
   postsPerDay: 3,
   presetNames: [],
   hooksText: "",
-  captionTemplate: "{hook}",
+  captionTemplate: "",
   hashtagsText: "",
 };
 
@@ -707,7 +707,7 @@ function Step4({
       presetLabel: string;
     }[] = [];
     const start = Date.parse(state.startDate);
-    const template = state.captionTemplate.trim() || "{hook}";
+    const template = state.captionTemplate.trim();
     const hookList = hooks.length > 0 ? hooks : [""];
     const snippetList = state.snippets;
     const presetList = state.presetNames;

@@ -58,7 +58,7 @@ export class QuotaError extends Error {
 function buildJobs(campaign: Campaign): CampaignPostJob[] {
   const hooks =
     campaign.hooks && campaign.hooks.length > 0 ? campaign.hooks : [""];
-  const template = campaign.captionTemplate?.trim() || "{hook}";
+  const template = campaign.captionTemplate?.trim() ?? "";
   const snippets = campaign.snippets;
   const presetNames =
     campaign.presetNames && campaign.presetNames.length > 0

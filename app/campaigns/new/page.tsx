@@ -27,7 +27,7 @@ type WizardState = {
   startDate: string;
   durationDays: number;
   postsPerDay: number;
-  presetName?: string;
+  presetNames: string[];
   hooksText: string;
   captionTemplate: string;
   hashtagsText: string;
@@ -45,6 +45,7 @@ const initialState: WizardState = {
   startDate: defaultStartDate(),
   durationDays: 14,
   postsPerDay: 3,
+  presetNames: [],
   hooksText: "",
   captionTemplate: "{hook}",
   hashtagsText: "",
@@ -183,7 +184,7 @@ export default function NewCampaignPage() {
             sectionStartTime: s.sectionStartTime,
             sectionEndTime: s.sectionEndTime,
           })),
-          presetName: state.presetName || undefined,
+          presetNames: state.presetNames.length > 0 ? state.presetNames : undefined,
           startDate: state.startDate,
           durationDays: state.durationDays,
           postsPerDay: state.postsPerDay,
@@ -588,24 +589,47 @@ function Step3({
       </p>
 
       {presets.length > 0 ? (
-        <Field label="Preset (optional)">
-          <select
-            value={state.presetName ?? ""}
-            onChange={(e) =>
-              onChange((s) => ({
-                ...s,
-                presetName: e.target.value || undefined,
-              }))
-            }
-            className="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-          >
-            <option value="">Default</option>
-            {presets.map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
-          </select>
+        <Field label={`Presets (${state.presetNames.length} selected — rotates round-robin)`}>
+          <div className="space-y-1 rounded border border-zinc-300 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-900">
+            {presets.map((p) => {
+              const checked = state.presetNames.includes(p);
+              return (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() =>
+                    onChange((s) => ({
+                      ...s,
+                      presetNames: checked
+                        ? s.presetNames.filter((x) => x !== p)
+                        : [...s.presetNames, p],
+                    }))
+                  }
+                  aria-pressed={checked}
+                  className={`flex w-full items-center gap-3 rounded px-2 py-1.5 text-left text-sm ${
+                    checked
+                      ? "bg-emerald-50 dark:bg-emerald-950/30"
+                      : "hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                  }`}
+                >
+                  <span
+                    className={`inline-flex h-4 w-4 items-center justify-center rounded border ${
+                      checked
+                        ? "border-emerald-600 bg-emerald-600 text-white"
+                        : "border-zinc-300 dark:border-zinc-700"
+                    }`}
+                  >
+                    {checked ? "✓" : ""}
+                  </span>
+                  <span>{p}</span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+            Pick one or more. Jobs rotate through them round-robin. Leave empty
+            to use Flowstage&apos;s default.
+          </p>
         </Field>
       ) : null}
 
@@ -680,11 +704,13 @@ function Step4({
       postNumber: number;
       caption: string;
       snippetLabel: string;
+      presetLabel: string;
     }[] = [];
     const start = Date.parse(state.startDate);
     const template = state.captionTemplate.trim() || "{hook}";
     const hookList = hooks.length > 0 ? hooks : [""];
     const snippetList = state.snippets;
+    const presetList = state.presetNames;
     let idx = 0;
     const previewDays = Math.min(2, state.durationDays);
     for (let d = 0; d < previewDays; d++) {
@@ -696,6 +722,10 @@ function Step4({
         const snippetLabel = snip
           ? `${snip.audioName} · ${snip.sectionName}`
           : "(no snippet)";
+        const presetLabel =
+          presetList.length > 0
+            ? presetList[idx % presetList.length]
+            : "default";
         sample.push({
           date: date.toISOString().slice(0, 10),
           postNumber: p + 1,
@@ -706,6 +736,7 @@ function Step4({
             postNumber: p + 1,
           }),
           snippetLabel,
+          presetLabel,
         });
         idx++;
       }
@@ -748,6 +779,22 @@ function Step4({
               </li>
             ))}
           </ul>
+        </div>
+        <div className="mt-3 text-xs text-zinc-600 dark:text-zinc-300">
+          <div className="font-medium text-zinc-700 dark:text-zinc-200">
+            Preset rotation ({state.presetNames.length})
+          </div>
+          {state.presetNames.length === 0 ? (
+            <p className="mt-1 text-zinc-500">
+              Flowstage default preset for every post.
+            </p>
+          ) : (
+            <ul className="mt-1 list-disc pl-5">
+              {state.presetNames.map((p) => (
+                <li key={p}>{p}</li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
 
@@ -797,7 +844,8 @@ function Step4({
               className="rounded border border-zinc-100 p-2 dark:border-zinc-800"
             >
               <div className="text-xs text-zinc-500 dark:text-zinc-400">
-                {j.date} · post #{j.postNumber} · {j.snippetLabel}
+                {j.date} · post #{j.postNumber} · {j.snippetLabel} ·{" "}
+                {j.presetLabel}
               </div>
               <div className="mt-0.5 whitespace-pre-wrap font-mono text-xs">
                 {j.caption || "(empty caption)"}

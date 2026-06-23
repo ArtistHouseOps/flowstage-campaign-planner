@@ -29,7 +29,7 @@ export const createCampaignSchema = z.object({
   aestheticId: z.string().min(1),
   snippets: z.array(snippetSchema).min(1, "Pick at least one snippet"),
 
-  presetName: z.string().optional(),
+  presetNames: z.array(z.string().min(1)).optional(),
   startDate: z.string().min(1),
   durationDays: z.number().int().min(1).max(60).default(14),
   postsPerDay: z.number().int().min(1).max(4).default(3),
@@ -60,6 +60,10 @@ function buildJobs(campaign: Campaign): CampaignPostJob[] {
     campaign.hooks && campaign.hooks.length > 0 ? campaign.hooks : [""];
   const template = campaign.captionTemplate?.trim() || "{hook}";
   const snippets = campaign.snippets;
+  const presetNames =
+    campaign.presetNames && campaign.presetNames.length > 0
+      ? campaign.presetNames
+      : null;
 
   const startMs = Date.parse(campaign.startDate);
   const jobs: CampaignPostJob[] = [];
@@ -90,7 +94,7 @@ function buildJobs(campaign: Campaign): CampaignPostJob[] {
         sectionName: snip.sectionName,
         sectionStartTime: snip.sectionStartTime,
         sectionEndTime: snip.sectionEndTime,
-        presetName: campaign.presetName,
+        presetName: presetNames ? presetNames[idx % presetNames.length] : undefined,
 
         targetDate: dateIso,
         targetSlotHour: null,
@@ -154,7 +158,7 @@ export async function createCampaignWithJobs(input: CreateCampaignInput) {
     aestheticId: input.aestheticId,
     snippets: input.snippets,
 
-    presetName: input.presetName,
+    presetNames: input.presetNames,
     startDate: input.startDate,
     durationDays: input.durationDays,
     postsPerDay: input.postsPerDay,

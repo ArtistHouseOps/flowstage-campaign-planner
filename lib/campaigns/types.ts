@@ -38,7 +38,7 @@ export type Campaign = {
   aestheticId: string;
   snippets: CampaignSnippet[];
 
-  presetName?: string;
+  presetNames?: string[];
   startDate: string;
   durationDays: number;
   postsPerDay: number;
